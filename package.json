@@ -1,12 +1,14 @@
 {
-  "name": "kingdom-realtime-server",
+  "name": "kingdom-realtime",
   "version": "1.0.0",
   "main": "gateway.js",
   "scripts": {
     "start": "node gateway.js"
   },
   "dependencies": {
-    "ws": "^8.16.0",
-    "node-fetch": "^2.6.7"
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "ws": "^8.13.0",
+    "uuid": "^9.0.0"
   }
 }
