@@ -1,0 +1,12 @@
+{
+  "name": "kingdom-gateway",
+  "version": "1.0.0",
+  "main": "gateway.js",
+  "scripts": {
+    "start": "node gateway.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0",
+    "axios": "^1.6.8"
+  }
+}
