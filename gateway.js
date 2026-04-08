@@ -15,7 +15,7 @@ app.get("/", (req,res)=>{
   res.send("Realtime Server Running 🚀");
 });
 
-// WORLD MANAGER
+// ================= WORLD MANAGER =================
 let worlds = [];
 const MAX_PLAYER = 100;
 
@@ -28,43 +28,54 @@ function getAvailableWorld(){
       players:[]
     };
     worlds.push(world);
-    console.log("World baru dibuat:", world.id);
+    console.log("World dibuat:", world.id);
   }
 
   return world;
 }
 
-// WEBSOCKET
+// ================= VERIFY TOKEN =================
+async function verifyToken(token){
+  try{
+    const res = await axios.post(API_URL + "/verify-token", { token });
+    if(res.data.status === "valid") return res.data.user;
+    return null;
+  }catch(err){
+    console.log("Verify token error:", err.message);
+    return null;
+  }
+}
+
+// ================= WEBSOCKET =================
 wss.on("connection", (ws)=>{
-  console.log("Client connect");
+  console.log("Client connected");
 
   ws.on("message", async (msg)=>{
     try{
       const data = JSON.parse(msg);
 
-      // LOGIN
+      // ===== LOGIN =====
       if(data.type === "login"){
-        const res = await axios.post(API_URL + "/verifyToken", {
-          token: data.token
-        });
+        const username = await verifyToken(data.token);
 
-        if(!res.data.valid){
+        if(!username){
           ws.send(JSON.stringify({ type:"error", message:"Token invalid"}));
           ws.close();
           return;
         }
 
+        const world = getAvailableWorld();
+
         const player = {
-          id: res.data.playerId,
-          username: res.data.username,
-          ws: ws
+          id: uuidv4(),
+          username,
+          ws
         };
 
-        const world = getAvailableWorld();
         world.players.push(player);
-
         ws.worldId = world.id;
         ws.playerId = player.id;
+        ws.username = username;
 
         ws.send(JSON.stringify({
           type:"login_success",
@@ -72,19 +83,19 @@ wss.on("connection", (ws)=>{
           playersOnline: world.players.length
         }));
 
-        console.log(player.username + " masuk world");
+        console.log(username + " join world " + world.id);
       }
 
-      // MOVE
+      // ===== MOVE =====
       if(data.type === "move"){
         const world = worlds.find(w => w.id === ws.worldId);
         if(!world) return;
 
         world.players.forEach(p=>{
-          if(p.ws !== ws){
+          if(p.ws !== ws && p.ws.readyState === WebSocket.OPEN){
             p.ws.send(JSON.stringify({
               type:"player_move",
-              playerId: ws.playerId,
+              player: ws.username,
               x:data.x,
               y:data.y
             }));
@@ -93,17 +104,20 @@ wss.on("connection", (ws)=>{
       }
 
     }catch(err){
-      console.log("Error:", err.message);
+      console.log("WS Error:", err.message);
     }
   });
 
   ws.on("close", ()=>{
     const world = worlds.find(w => w.id === ws.worldId);
     if(!world) return;
+
     world.players = world.players.filter(p => p.id !== ws.playerId);
+    console.log("Player disconnected");
   });
 });
 
+// 🔥 WAJIB untuk Railway
 server.listen(PORT, ()=>{
-  console.log("Server running on port", PORT);
+  console.log("Realtime server running on port", PORT);
 });
